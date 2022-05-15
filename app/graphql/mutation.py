@@ -57,13 +57,13 @@ class CarUpdateMutation(graphene.Mutation):
 
         return CarCreateMutation(car=car)
 
-@mutation_jwt_required
 class CarDeleteMutation(graphene.Mutation):
     class Arguments:
         id = graphene.Int(required=True)
 
     car = graphene.Field(lambda: CarType)
-
+    
+    @mutation_jwt_required
     def mutate(self, info, id):
         Car.query.filter_by(id=id).delete()
 
