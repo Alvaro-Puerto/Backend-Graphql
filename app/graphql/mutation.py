@@ -1,8 +1,8 @@
 import graphene
-from pkg_resources import require
+from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
-from app.model import Car
-from app.graphql.objects import CarType
+from app.model import Car, User
+from app.graphql.objects import CarType, UserType
 
 
 class CarCreateMutation(graphene.Mutation):
@@ -67,7 +67,28 @@ class CarDeleteMutation(graphene.Mutation):
 
         return None
 
+class UserCreateMutation(graphene.Mutation):
+    class Arguments:
+        username = graphene.String(required=True)
+        password = graphene.String(required=True)
+        email = graphene.String(required=True)
+
+    user = graphene.Field(lambda: UserType)
+
+    def mutate(self, info, username, password, email):
+        user = User(
+                        username=username, 
+                        password=generate_password_hash(password),
+                        email=email
+                    )
+        
+        db.session.add(user)
+        db.session.commit()
+
+        return UserCreateMutation(user=user)
+
 class Mutation(graphene.ObjectType):
     car_add_mutation = CarCreateMutation.Field()
     car_edit_mutation = CarUpdateMutation.Field()
     car_delete_mutation = CarDeleteMutation.Field()
+    user_create_mutation = UserCreateMutation.Field()
