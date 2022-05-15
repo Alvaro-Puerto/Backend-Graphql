@@ -1,5 +1,6 @@
 import graphene
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_graphql_auth import create_access_token, create_refresh_token, mutation_jwt_required
 from app import db
 from app.model import Car, User
 from app.graphql.objects import CarType, UserType
@@ -16,6 +17,7 @@ class CarCreateMutation(graphene.Mutation):
     
     car = graphene.Field(lambda: CarType)
 
+    @mutation_jwt_required
     def mutate(self, info, brand, model, color, price, year):
         car = Car(
                     brand= brand, 
@@ -41,6 +43,7 @@ class CarUpdateMutation(graphene.Mutation):
 
     car = graphene.Field(lambda: CarType)
 
+    @mutation_jwt_required
     def mutate(self, info,id ,brand, model, color, price, year):
         car = Car.query.filter_by(id=id).first()
         print(id)
@@ -54,6 +57,7 @@ class CarUpdateMutation(graphene.Mutation):
 
         return CarCreateMutation(car=car)
 
+@mutation_jwt_required
 class CarDeleteMutation(graphene.Mutation):
     class Arguments:
         id = graphene.Int(required=True)
@@ -87,8 +91,32 @@ class UserCreateMutation(graphene.Mutation):
 
         return UserCreateMutation(user=user)
 
+class AuthMutation(graphene.Mutation):
+    access_token = graphene.String()
+    refresh_token = graphene.String()
+
+    class Arguments:
+        username = graphene.String()
+        password = graphene.String()
+    
+    def mutate(self, info , username, password) :
+        user = User.query.filter_by(username=username).first()
+        print(user)
+        if not user:
+            raise Exception('Authenication Failure : User is not registered')
+
+        if check_password_hash(user.password, password):
+            return AuthMutation(
+                access_token = create_access_token(username),
+                refresh_token = create_refresh_token(username)
+            )
+        else:
+            raise Exception('Authenication Failure : Password wrong')
+
+
 class Mutation(graphene.ObjectType):
     car_add_mutation = CarCreateMutation.Field()
     car_edit_mutation = CarUpdateMutation.Field()
     car_delete_mutation = CarDeleteMutation.Field()
     user_create_mutation = UserCreateMutation.Field()
+    auth_mutation = AuthMutation.Field()

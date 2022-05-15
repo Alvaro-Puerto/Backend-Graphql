@@ -13,3 +13,4 @@ class Development(Config):
                             + os.environ['DB_HOST'] + ":" \
                             + os.environ['DB_PORT'] + "/" \
                             + os.environ['DB_NAME']
+    JWT_SECRET_KEY=os.environ['JWT_SECRET_KEY']
