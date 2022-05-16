@@ -1,4 +1,5 @@
 import graphene
+from graphql_relay.node.node import from_global_id
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_graphql_auth import create_access_token, create_refresh_token, mutation_jwt_required
 from app import db
@@ -12,19 +13,19 @@ class CarCreateMutation(graphene.Mutation):
         brand = graphene.String(required=True)
         model = graphene.String(required=True)
         color = graphene.String(required=True)
-        price = graphene.Float(required=True)
-        year = graphene.Int(required=True)
+        price = graphene.String(required=True)
+        year = graphene.String(required=True)
+
     
     car = graphene.Field(lambda: CarType)
 
-    @mutation_jwt_required
     def mutate(self, info, brand, model, color, price, year):
         car = Car(
                     brand= brand, 
                     model= model, 
                     color= color,
-                    price= price,
-                    year= year 
+                    price= float(price),
+                    year= int(year) 
                 )
 
         db.session.add(car)
@@ -38,34 +39,35 @@ class CarUpdateMutation(graphene.Mutation):
         brand = graphene.String(required=True)
         model = graphene.String(required=True)
         color = graphene.String(required=True)
-        price = graphene.Float(required=True)
-        year = graphene.Int(required=True)
+        price = graphene.String(required=True)
+        year = graphene.String(required=True)
 
     car = graphene.Field(lambda: CarType)
 
-    @mutation_jwt_required
     def mutate(self, info,id ,brand, model, color, price, year):
-        car = Car.query.filter_by(id=id).first()
-        print(id)
+        id = from_global_id(id)
+        car = Car.query.filter_by(id=id[1]).first()
+       
         if car:
             car.brand = brand
             car.model = model
-            car.year = year
+            car.year = int(year)
             car.color = color
-            car.price = price
+            car.price = float(price)
             db.session.commit()
 
         return CarCreateMutation(car=car)
 
 class CarDeleteMutation(graphene.Mutation):
     class Arguments:
-        id = graphene.Int(required=True)
+        id = graphene.String(required=True)
 
     car = graphene.Field(lambda: CarType)
     
-    @mutation_jwt_required
     def mutate(self, info, id):
-        Car.query.filter_by(id=id).delete()
+        id = from_global_id(id)
+        print(id)
+        Car.query.filter_by(id=id[1]).delete()
 
         db.session.commit()
 
@@ -96,22 +98,22 @@ class AuthMutation(graphene.Mutation):
     refresh_token = graphene.String()
 
     class Arguments:
-        username = graphene.String()
+        email = graphene.String()
         password = graphene.String()
     
-    def mutate(self, info , username, password) :
-        user = User.query.filter_by(username=username).first()
+    def mutate(self, info , email, password) :
+        user = User.query.filter_by(email=email).first()
         print(user)
         if not user:
-            raise Exception('Authenication Failure : User is not registered')
+            raise Exception('Authenication Failure : Usuario registrado')
 
         if check_password_hash(user.password, password):
             return AuthMutation(
-                access_token = create_access_token(username),
-                refresh_token = create_refresh_token(username)
+                access_token = create_access_token(email),
+                refresh_token = create_refresh_token(email)
             )
         else:
-            raise Exception('Authenication Failure : Password wrong')
+            raise Exception('Authenication Failure : Contraseña incorrecta')
 
 
 class Mutation(graphene.ObjectType):
